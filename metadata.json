@@ -1,0 +1,6 @@
+{
+  "name": "Valent & Co. Luxury Lifestyle",
+  "description": "A premium lifestyle e-commerce boutique featuring perfumes, watches, sunglasses, and leather accessories with streamlined Cash on Delivery checkout for Bangladesh.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
