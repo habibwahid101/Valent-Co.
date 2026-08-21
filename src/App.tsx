@@ -10,6 +10,7 @@ import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { QuickViewModal } from './components/QuickViewModal';
 import { FragranceQuizModal } from './components/FragranceQuizModal';
+import { MobileMenuDrawer } from './components/MobileMenuDrawer';
 
 // Views
 // Home/Shop are eager (the first thing almost every visitor sees).
@@ -85,6 +86,7 @@ const MainLayout: React.FC = () => {
       {activeView !== 'admin' && <Footer />}
 
       {/* Slide-over Drawers & Interactive Overlays */}
+      {activeView !== 'admin' && <MobileMenuDrawer />}
       <CartDrawer />
       <QuickViewModal />
       <FragranceQuizModal />
