@@ -519,8 +519,13 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return undefined;
     } catch (err) {
+      // Previously this swallowed the error and returned undefined, which
+      // meant a network/permissions failure looked identical in the UI to
+      // "no such order exists" — a customer with a real, valid order could
+      // be told it wasn't found just because their connection dropped.
+      // Throwing here lets the UI (OrderLookupView) distinguish the two.
       console.error('Order lookup failed.', err);
-      return undefined;
+      throw new Error('We could not check that order right now. Please check your connection and try again, or contact us on WhatsApp.');
     }
   };
 

@@ -19,6 +19,7 @@ export const OrderLookupView: React.FC = () => {
   const [query, setQuery] = useState('');
   const [searched, setSearched] = useState(false);
   const [foundOrder, setFoundOrder] = useState<Order | undefined>(undefined);
+  const [lookupError, setLookupError] = useState<string | null>(null);
 
   const [isSearching, setIsSearching] = useState(false);
 
@@ -26,10 +27,19 @@ export const OrderLookupView: React.FC = () => {
     e.preventDefault();
     if (!query.trim()) return;
     setIsSearching(true);
+    setLookupError(null);
     try {
       const res = await findOrder(query.trim());
       setFoundOrder(res);
       setSearched(true);
+    } catch (err) {
+      // Distinguish "we checked and there's no such order" from "we
+      // couldn't check" — previously both showed the same "not found"
+      // message, which is misleading when the real cause is a dropped
+      // connection rather than a wrong order number.
+      setSearched(false);
+      setFoundOrder(undefined);
+      setLookupError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setIsSearching(false);
     }
@@ -85,6 +95,14 @@ export const OrderLookupView: React.FC = () => {
           <span>{isSearching ? 'Searching…' : 'Track'}</span>
         </button>
       </form>
+
+      {/* Lookup error (network/server failure — distinct from "not found") */}
+      {lookupError && (
+        <div className="max-w-lg mx-auto mb-8 p-4 bg-rose-50 border border-rose-100 rounded-xl text-rose-800 text-xs flex items-start gap-2.5">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>{lookupError}</span>
+        </div>
+      )}
 
       {/* Results */}
       {searched && (

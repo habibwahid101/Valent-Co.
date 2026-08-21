@@ -4,10 +4,10 @@
  * (admin) role in the Cognito Identity Pool, which grants write access to
  * DynamoDB (see aws.ts + IAM role ValentCo-AdminRole).
  */
-import {
-  CognitoIdentityProviderClient,
-  InitiateAuthCommand,
-} from '@aws-sdk/client-cognito-identity-provider';
+// The Cognito Identity Provider SDK is dynamically imported inside
+// adminSignIn() below rather than statically here, so its ~considerable
+// bundle weight is only downloaded by visitors who actually open the admin
+// sign-in form, not by every storefront visitor.
 
 const REGION = import.meta.env.VITE_AWS_REGION as string;
 const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID as string;
@@ -26,6 +26,9 @@ export async function adminSignIn(email: string, password: string): Promise<Admi
   if (!REGION || !CLIENT_ID) {
     throw new Error('AWS Cognito is not configured for this build.');
   }
+  const { CognitoIdentityProviderClient, InitiateAuthCommand } = await import(
+    '@aws-sdk/client-cognito-identity-provider'
+  );
   const client = new CognitoIdentityProviderClient({ region: REGION });
   const res = await client.send(
     new InitiateAuthCommand({

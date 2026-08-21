@@ -243,7 +243,7 @@ export const AdminView: React.FC = () => {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as 'dashboard' | 'orders' | 'products' | 'categories')}
                 className={`py-4 border-b-2 flex items-center gap-2 transition cursor-pointer ${
                   activeTab === tab.id
                     ? 'border-[#1C1B19] text-[#1C1B19] font-bold'

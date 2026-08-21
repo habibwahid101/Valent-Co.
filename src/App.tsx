@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { ShopProvider, useShop } from './context/ShopContext';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -12,16 +12,42 @@ import { QuickViewModal } from './components/QuickViewModal';
 import { FragranceQuizModal } from './components/FragranceQuizModal';
 
 // Views
+// Home/Shop are eager (the first thing almost every visitor sees).
+// Everything else is route-split via React.lazy so its code — and, for
+// AdminView, the Cognito sign-in SDK it pulls in — is only downloaded by
+// visitors who actually navigate there, instead of shipping in everyone's
+// initial bundle.
 import { HomeView } from './components/views/HomeView';
 import { ShopView } from './components/views/ShopView';
-import { ProductDetailView } from './components/views/ProductDetailView';
-import { CartView } from './components/views/CartView';
-import { CheckoutView } from './components/views/CheckoutView';
-import { OrderSuccessView } from './components/views/OrderSuccessView';
-import { OrderLookupView } from './components/views/OrderLookupView';
-import { WishlistView } from './components/views/WishlistView';
-import { AdminView } from './components/views/AdminView';
 import { AdminGate } from './components/AdminGate';
+
+const ProductDetailView = lazy(() =>
+  import('./components/views/ProductDetailView').then((m) => ({ default: m.ProductDetailView }))
+);
+const CartView = lazy(() =>
+  import('./components/views/CartView').then((m) => ({ default: m.CartView }))
+);
+const CheckoutView = lazy(() =>
+  import('./components/views/CheckoutView').then((m) => ({ default: m.CheckoutView }))
+);
+const OrderSuccessView = lazy(() =>
+  import('./components/views/OrderSuccessView').then((m) => ({ default: m.OrderSuccessView }))
+);
+const OrderLookupView = lazy(() =>
+  import('./components/views/OrderLookupView').then((m) => ({ default: m.OrderLookupView }))
+);
+const WishlistView = lazy(() =>
+  import('./components/views/WishlistView').then((m) => ({ default: m.WishlistView }))
+);
+const AdminView = lazy(() =>
+  import('./components/views/AdminView').then((m) => ({ default: m.AdminView }))
+);
+
+const ViewLoadingFallback: React.FC = () => (
+  <div className="min-h-[60vh] flex items-center justify-center">
+    <div className="w-8 h-8 border-2 border-[#E8E5DE] border-t-[#1C1B19] rounded-full animate-spin" />
+  </div>
+);
 
 // Floating WhatsApp concierge
 import { MessageCircle } from 'lucide-react';
@@ -44,13 +70,15 @@ const MainLayout: React.FC = () => {
       <main className="flex-1">
         {activeView === 'home' && <HomeView />}
         {activeView === 'shop' && <ShopView />}
-        {activeView === 'product-detail' && <ProductDetailView />}
-        {activeView === 'cart' && <CartView />}
-        {activeView === 'checkout' && <CheckoutView />}
-        {activeView === 'order-success' && <OrderSuccessView />}
-        {activeView === 'order-lookup' && <OrderLookupView />}
-        {activeView === 'wishlist' && <WishlistView />}
-        {activeView === 'admin' && <AdminGate><AdminView /></AdminGate>}
+        <Suspense fallback={<ViewLoadingFallback />}>
+          {activeView === 'product-detail' && <ProductDetailView />}
+          {activeView === 'cart' && <CartView />}
+          {activeView === 'checkout' && <CheckoutView />}
+          {activeView === 'order-success' && <OrderSuccessView />}
+          {activeView === 'order-lookup' && <OrderLookupView />}
+          {activeView === 'wishlist' && <WishlistView />}
+          {activeView === 'admin' && <AdminGate><AdminView /></AdminGate>}
+        </Suspense>
       </main>
 
       {/* Footer (Hidden inside Admin view) */}

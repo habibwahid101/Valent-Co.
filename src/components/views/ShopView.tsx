@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { ProductCard } from '../ProductCard';
-import { ProductCategory, FragranceFamily } from '../../types';
+import { ProductCategory, FragranceFamily, FilterState } from '../../types';
 import { CATEGORIES_LIST, BRANDS_LIST } from '../../data/mockData';
 
 export const ShopView: React.FC = () => {
@@ -421,7 +421,7 @@ export const ShopView: React.FC = () => {
               <span className="text-xs text-[#6B6864] hidden sm:inline">Sort by:</span>
               <select
                 value={filters.sortBy}
-                onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value as any }))}
+                onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value as FilterState['sortBy'] }))}
                 className="text-xs py-1.5 px-3 rounded border border-[#D9D5CC] bg-[#FAF9F6] text-[#1C1B19] font-medium focus:outline-none focus:border-[#1C1B19] cursor-pointer"
               >
                 <option value="featured">Editorial Featured</option>
@@ -499,7 +499,7 @@ export const ShopView: React.FC = () => {
                     {CATEGORIES_LIST.map(cat => (
                       <button
                         key={cat.id}
-                        onClick={() => setSelectedCategory(cat.id as any)}
+                        onClick={() => setSelectedCategory(cat.id as ProductCategory | 'all')}
                         className={`w-full text-left py-1.5 px-2 rounded ${selectedCategory === cat.id ? 'bg-[#1C1B19] text-white font-bold' : 'text-[#4A4744]'}`}
                       >
                         {cat.name}
