@@ -55,7 +55,7 @@ export const CheckoutView: React.FC = () => {
     );
   }
 
-  const handleSubmitOrder = (e: React.FormEvent) => {
+  const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -87,10 +87,21 @@ export const CheckoutView: React.FC = () => {
       customerNote: customerNote.trim() || undefined
     };
 
-    setTimeout(() => {
-      createOrder(customerInfo, deliveryFee);
+    try {
+      // createOrder awaits the database write and only clears the cart /
+      // navigates to the success screen once the order is actually saved —
+      // so if it throws, nothing has been lost and the cart is still intact
+      // for the customer to retry.
+      await createOrder(customerInfo, deliveryFee);
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : 'We could not confirm your order. Please try again, or contact us directly via WhatsApp.'
+      );
+    } finally {
       setIsSubmitting(false);
-    }, 800);
+    }
   };
 
   return (

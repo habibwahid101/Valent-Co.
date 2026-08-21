@@ -168,7 +168,8 @@ export const CartView: React.FC = () => {
                     </span>
                     <button
                       onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                      className="p-2 text-[#6B6864] hover:text-[#1C1B19] cursor-pointer"
+                      disabled={item.quantity >= item.selectedVariant.stock}
+                      className="p-2 text-[#6B6864] hover:text-[#1C1B19] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                       aria-label="Increase quantity"
                     >
                       <Plus className="w-3.5 h-3.5" />

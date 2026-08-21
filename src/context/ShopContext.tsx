@@ -88,13 +88,13 @@ interface ShopContextType {
   isInWishlist: (productId: string) => boolean;
 
   // Checkout & Order
-  createOrder: (customerInfo: CustomerInfo, deliveryFee: number) => Order;
+  createOrder: (customerInfo: CustomerInfo, deliveryFee: number) => Promise<Order>;
   updateOrderStatus: (orderId: string, status: OrderStatus, adminNotes?: string) => void;
   findOrder: (query: string) => Promise<Order | undefined>;
 
   // Admin inventory
-  addProduct: (product: Omit<Product, 'id'>) => Product;
-  updateProduct: (id: string, product: Partial<Product>) => void;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<Product>;
+  updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => void;
   updateStock: (id: string, stock: number) => void;
   resetToDemoData: () => void;
@@ -296,7 +296,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       removeFromCart(cartItemId);
       return;
     }
-    setCart(prev => prev.map(item => item.id === cartItemId ? { ...item, quantity } : item));
+    // Cap at the variant's available stock so the cart can never hold more
+    // units than are actually in inventory, regardless of which UI control
+    // triggered the change.
+    setCart(prev => prev.map(item => {
+      if (item.id !== cartItemId) return item;
+      const maxQty = Math.max(1, item.selectedVariant.stock);
+      return { ...item, quantity: Math.min(quantity, maxQty) };
+    }));
   };
 
   const removeFromCart = (cartItemId: string) => {
@@ -350,7 +357,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // --- Orders -------------------------------------------------------------
 
-  const createOrder = (customerInfo: CustomerInfo, deliveryFee: number): Order => {
+  const createOrder = async (customerInfo: CustomerInfo, deliveryFee: number): Promise<Order> => {
     const randomSuffix = Math.floor(10000 + Math.random() * 90000);
     const orderNumber = `VAL-${randomSuffix}`;
 
@@ -384,7 +391,37 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       adminNotes: 'Order placed via online storefront. Cash on delivery verification pending.'
     };
 
-    // Deduct stock locally (optimistic UI)
+    // Persist to DynamoDB FIRST (guest role: PutItem on Orders only) and wait
+    // for confirmation before touching any local state or navigating to the
+    // success screen. Previously this write was fire-and-forget: the customer
+    // saw "order confirmed" immediately regardless of whether the database
+    // write actually succeeded, so a network blip or a permissions issue
+    // could silently lose a real order. Now a failure here throws, the
+    // caller (checkout screen) catches it, and the customer sees an error
+    // and can retry instead of believing an order went through when it
+    // didn't. ConditionExpression additionally guards against overwriting an
+    // existing order: the guest IAM role can PutItem but has no
+    // Update/Delete, so without this condition a client with valid guest
+    // credentials could overwrite another shopper's order by resubmitting
+    // the same id.
+    if (guestClient) {
+      const item = { ...newOrder, customerMobile: customerInfo.mobile };
+      try {
+        await guestClient.send(new PutCommand({
+          TableName: ORDERS_TABLE,
+          Item: item,
+          ConditionExpression: 'attribute_not_exists(id)',
+        }));
+      } catch (err) {
+        console.error('Failed to save order to DynamoDB.', err);
+        throw new Error('We could not confirm your order. Please try again, or contact us directly via WhatsApp.');
+      }
+    }
+
+    // Only after the order is confirmed persisted (or AWS isn't configured,
+    // e.g. local dev) do we touch local state, so the cart is never cleared
+    // and the success screen never shown for an order that didn't actually
+    // save.
     setProducts(prevProducts =>
       prevProducts.map(p => {
         const matchingCartItems = cart.filter(ci => ci.productId === p.id);
@@ -402,22 +439,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearCart();
     setActiveView('order-success');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    // Persist to DynamoDB (guest role: PutItem on Orders only).
-    // ConditionExpression guards against overwriting an existing order: the
-    // guest IAM role can PutItem but has no Update/Delete, so without this
-    // condition a client with valid guest credentials could overwrite another
-    // shopper's order by resubmitting the same id.
-    if (guestClient) {
-      const item = { ...newOrder, customerMobile: customerInfo.mobile };
-      guestClient
-        .send(new PutCommand({
-          TableName: ORDERS_TABLE,
-          Item: item,
-          ConditionExpression: 'attribute_not_exists(id)',
-        }))
-        .catch(err => console.error('Failed to save order to DynamoDB.', err));
-    }
 
     return newOrder;
   };
@@ -505,38 +526,46 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // --- Admin Product Actions --------------------------------------------
 
-  const addProduct = (productData: Omit<Product, 'id'>): Product => {
+  // Persists to DynamoDB first and waits for confirmation before updating
+  // local state, mirroring the order-creation flow above: previously this
+  // was fire-and-forget, so the admin form would close and reset as if the
+  // save succeeded even if the DynamoDB write actually failed, silently
+  // losing the new product.
+  const addProduct = async (productData: Omit<Product, 'id'>): Promise<Product> => {
     const newProduct: Product = {
       ...productData,
       id: `prod-${Date.now()}`
     };
-    setProducts(prev => [newProduct, ...prev]);
 
     if (adminClient) {
-      adminClient
-        .send(new PutCommand({ TableName: PRODUCTS_TABLE, Item: newProduct }))
-        .catch(err => console.error('Failed to save product to DynamoDB.', err));
+      try {
+        await adminClient.send(new PutCommand({ TableName: PRODUCTS_TABLE, Item: newProduct }));
+      } catch (err) {
+        console.error('Failed to save product to DynamoDB.', err);
+        throw new Error('Could not save this product. Please check your connection and try again.');
+      }
     }
+
+    setProducts(prev => [newProduct, ...prev]);
     return newProduct;
   };
 
-  const updateProduct = (id: string, updatedFields: Partial<Product>) => {
-    let merged: Product | undefined;
-    setProducts(prev => prev.map(p => {
-      if (p.id === id) {
-        merged = { ...p, ...updatedFields };
-        return merged;
-      }
-      return p;
-    }));
-    if (selectedProduct && selectedProduct.id === id) {
-      setSelectedProduct(prev => prev ? { ...prev, ...updatedFields } : null);
-    }
+  const updateProduct = async (id: string, updatedFields: Partial<Product>): Promise<void> => {
+    const current = products.find(p => p.id === id);
+    const merged: Product | undefined = current ? { ...current, ...updatedFields } : undefined;
 
     if (adminClient && merged) {
-      adminClient
-        .send(new PutCommand({ TableName: PRODUCTS_TABLE, Item: merged }))
-        .catch(err => console.error('Failed to update product in DynamoDB.', err));
+      try {
+        await adminClient.send(new PutCommand({ TableName: PRODUCTS_TABLE, Item: merged }));
+      } catch (err) {
+        console.error('Failed to update product in DynamoDB.', err);
+        throw new Error('Could not save these changes. Please check your connection and try again.');
+      }
+    }
+
+    setProducts(prev => prev.map(p => (p.id === id ? { ...p, ...updatedFields } : p)));
+    if (selectedProduct && selectedProduct.id === id) {
+      setSelectedProduct(prev => prev ? { ...prev, ...updatedFields } : null);
     }
   };
 

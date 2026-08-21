@@ -65,6 +65,8 @@ export const AdminView: React.FC = () => {
   const [formImageUrl, setFormImageUrl] = useState('');
   const [formIsNew, setFormIsNew] = useState(true);
   const [formIsBestSeller, setFormIsBestSeller] = useState(false);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [productFormError, setProductFormError] = useState('');
 
   // Dashboard calculations
   const totalRevenue = orders
@@ -104,9 +106,11 @@ export const AdminView: React.FC = () => {
   });
 
   // Save new product
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim() || !formPrice) return;
+    setProductFormError('');
+    setIsSavingProduct(true);
 
     const defaultImg = formImageUrl.trim() || 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=800&auto=format&fit=crop';
     const slug = formName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -142,22 +146,32 @@ export const AdminView: React.FC = () => {
       tags: ['Luxury', formCategory]
     };
 
-    if (editingProduct) {
-      updateProduct(editingProduct.id, newProdData);
-      setEditingProduct(null);
-    } else {
-      addProduct(newProdData);
-    }
+    try {
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, newProdData);
+        setEditingProduct(null);
+      } else {
+        await addProduct(newProdData);
+      }
 
-    // Reset
-    setIsAddProductModalOpen(false);
-    setFormName('');
-    setFormSubtitle('');
-    setFormDesc('');
-    setFormPrice(6500);
-    setFormOldPrice(0);
-    setFormStock(15);
-    setFormImageUrl('');
+      // Only reset and close the modal once the save is confirmed —
+      // otherwise a failed save would look identical to a successful one
+      // and the product would silently be missing from the catalogue.
+      setIsAddProductModalOpen(false);
+      setFormName('');
+      setFormSubtitle('');
+      setFormDesc('');
+      setFormPrice(6500);
+      setFormOldPrice(0);
+      setFormStock(15);
+      setFormImageUrl('');
+    } catch (err) {
+      setProductFormError(
+        err instanceof Error ? err.message : 'Could not save this product. Please try again.'
+      );
+    } finally {
+      setIsSavingProduct(false);
+    }
   };
 
   const handleOpenEditProduct = (prod: Product) => {
@@ -837,8 +851,14 @@ export const AdminView: React.FC = () => {
                 </button>
               </div>
 
+              {productFormError && (
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+                  {productFormError}
+                </div>
+              )}
+
               <form onSubmit={handleSaveProduct} className="space-y-4 text-xs">
-                
+
                 <div>
                   <label className="block font-bold uppercase tracking-wider text-[#1C1B19] mb-1">
                     Product Title *
@@ -985,9 +1005,10 @@ export const AdminView: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-[#1C1B19] text-white font-bold uppercase tracking-wider rounded hover:bg-[#2A2927] transition cursor-pointer"
+                    disabled={isSavingProduct}
+                    className="px-6 py-2 bg-[#1C1B19] text-white font-bold uppercase tracking-wider rounded hover:bg-[#2A2927] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {editingProduct ? 'Update Product' : 'Save & Publish'}
+                    {isSavingProduct ? 'Saving…' : editingProduct ? 'Update Product' : 'Save & Publish'}
                   </button>
                 </div>
 

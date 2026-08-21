@@ -313,8 +313,9 @@ export const ProductDetailView: React.FC = () => {
                     {quantity}
                   </span>
                   <button
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="p-3 text-[#6B6864] hover:text-[#1C1B19] transition cursor-pointer"
+                    onClick={() => setQuantity(q => Math.min(selectedVariant.stock, q + 1))}
+                    disabled={quantity >= selectedVariant.stock}
+                    className="p-3 text-[#6B6864] hover:text-[#1C1B19] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label="Increase quantity"
                   >
                     <Plus className="w-4 h-4" />
@@ -325,7 +326,7 @@ export const ProductDetailView: React.FC = () => {
                 <button
                   id="add-to-cart-cta"
                   onClick={handleAddToCart}
-                  disabled={product.stock <= 0}
+                  disabled={product.stock <= 0 || quantity > selectedVariant.stock}
                   className="flex-1 py-3.5 px-6 bg-[#1C1B19] hover:bg-[#2A2927] text-white text-xs font-bold uppercase tracking-[0.18em] rounded-lg shadow-md flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
                 >
                   {isAdded ? (
@@ -345,7 +346,8 @@ export const ProductDetailView: React.FC = () => {
               {/* Direct Cash on Delivery Instant Order */}
               <button
                 onClick={handleDirectBuy}
-                className="w-full py-3.5 px-4 bg-[#9A6A3A] hover:bg-[#7A5128] text-white text-xs font-bold uppercase tracking-[0.18em] rounded-lg shadow-sm flex items-center justify-center gap-2 transition cursor-pointer"
+                disabled={product.stock <= 0 || quantity > selectedVariant.stock}
+                className="w-full py-3.5 px-4 bg-[#9A6A3A] hover:bg-[#7A5128] text-white text-xs font-bold uppercase tracking-[0.18em] rounded-lg shadow-sm flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span>Order Now with Cash on Delivery</span>
                 <ArrowRight className="w-4 h-4" />
@@ -570,7 +572,7 @@ export const ProductDetailView: React.FC = () => {
 
         <button
           onClick={handleAddToCart}
-          disabled={product.stock <= 0}
+          disabled={product.stock <= 0 || quantity > selectedVariant.stock}
           className="py-2.5 px-5 bg-[#1C1B19] hover:bg-[#2A2927] text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-sm flex items-center gap-2 shrink-0 cursor-pointer disabled:opacity-50"
         >
           {isAdded ? <Check className="w-4 h-4 text-emerald-400" /> : <ShoppingBag className="w-4 h-4" />}
