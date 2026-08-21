@@ -127,7 +127,7 @@ export const Header: React.FC = () => {
               <span className="block font-serif text-lg sm:text-2xl lg:text-3xl tracking-[0.1em] sm:tracking-[0.15em] lg:tracking-[0.2em] font-semibold uppercase text-[#1C1B19] group-hover:text-[#9A6A3A] transition duration-300 whitespace-nowrap truncate">
                 VALENT & CO.
               </span>
-              <span className="block text-[9px] tracking-[0.2em] sm:tracking-[0.35em] text-[#6B6864] uppercase -mt-0.5 whitespace-nowrap truncate">
+              <span className="block text-[8px] sm:text-[9px] tracking-[0.08em] sm:tracking-[0.35em] text-[#6B6864] uppercase -mt-0.5 whitespace-nowrap truncate">
                 Boutique & Horology
               </span>
             </button>
