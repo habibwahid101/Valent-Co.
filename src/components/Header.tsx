@@ -122,7 +122,7 @@ export const Header: React.FC = () => {
           <div className="flex-1 min-w-0 text-center lg:flex-none lg:w-2/4">
             <button
               onClick={() => navigateTo('home')}
-              className="inline-block max-w-full text-left cursor-pointer group text-center"
+              className="inline-block max-w-full text-center cursor-pointer group"
             >
               <span className="block font-serif text-lg sm:text-2xl lg:text-3xl tracking-[0.1em] sm:tracking-[0.15em] lg:tracking-[0.2em] font-semibold uppercase text-[#1C1B19] group-hover:text-[#9A6A3A] transition duration-300 whitespace-nowrap truncate">
                 VALENT & CO.
