@@ -21,6 +21,7 @@ import { OrderSuccessView } from './components/views/OrderSuccessView';
 import { OrderLookupView } from './components/views/OrderLookupView';
 import { WishlistView } from './components/views/WishlistView';
 import { AdminView } from './components/views/AdminView';
+import { AdminGate } from './components/AdminGate';
 
 // Floating WhatsApp concierge
 import { MessageCircle } from 'lucide-react';
@@ -49,7 +50,7 @@ const MainLayout: React.FC = () => {
         {activeView === 'order-success' && <OrderSuccessView />}
         {activeView === 'order-lookup' && <OrderLookupView />}
         {activeView === 'wishlist' && <WishlistView />}
-        {activeView === 'admin' && <AdminView />}
+        {activeView === 'admin' && <AdminGate><AdminView /></AdminGate>}
       </main>
 
       {/* Footer (Hidden inside Admin view) */}

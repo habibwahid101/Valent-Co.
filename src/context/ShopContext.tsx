@@ -1,25 +1,42 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  Product, 
-  CartItem, 
-  Order, 
-  OrderStatus, 
-  ProductCategory, 
-  ProductVariant, 
-  CustomerInfo, 
-  FilterState 
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  Product,
+  CartItem,
+  Order,
+  OrderStatus,
+  ProductCategory,
+  ProductVariant,
+  CustomerInfo,
+  FilterState
 } from '../types';
-import { INITIAL_PRODUCTS, INITIAL_ORDERS } from '../data/mockData';
+import { INITIAL_PRODUCTS } from '../data/mockData';
+import {
+  createDocClient,
+  awsIsConfigured,
+  PRODUCTS_TABLE,
+  ORDERS_TABLE,
+  ScanCommand,
+  PutCommand,
+  DeleteCommand,
+  UpdateCommand,
+  QueryCommand,
+} from '../lib/aws';
+import {
+  adminSignIn,
+  adminSignOut,
+  loadAdminSession,
+  AdminSession,
+} from '../lib/adminAuth';
 
-export type AppView = 
-  | 'home' 
-  | 'shop' 
-  | 'product-detail' 
-  | 'cart' 
-  | 'checkout' 
-  | 'order-success' 
-  | 'order-lookup' 
-  | 'wishlist' 
+export type AppView =
+  | 'home'
+  | 'shop'
+  | 'product-detail'
+  | 'cart'
+  | 'checkout'
+  | 'order-success'
+  | 'order-lookup'
+  | 'wishlist'
   | 'admin';
 
 interface ShopContextType {
@@ -39,7 +56,13 @@ interface ShopContextType {
   isFragranceQuizOpen: boolean;
   couponCode: string;
   couponDiscount: number;
-  
+
+  // AWS / Admin auth
+  awsConfigured: boolean;
+  adminEmail: string | null;
+  adminSignInAction: (email: string, password: string) => Promise<void>;
+  adminSignOutAction: () => void;
+
   // Navigation & UI controls
   navigateTo: (view: AppView, payload?: { product?: Product; category?: ProductCategory | 'all'; search?: string }) => void;
   setSelectedCategory: (cat: ProductCategory | 'all') => void;
@@ -67,7 +90,7 @@ interface ShopContextType {
   // Checkout & Order
   createOrder: (customerInfo: CustomerInfo, deliveryFee: number) => Order;
   updateOrderStatus: (orderId: string, status: OrderStatus, adminNotes?: string) => void;
-  findOrder: (query: string) => Order | undefined;
+  findOrder: (query: string) => Promise<Order | undefined>;
 
   // Admin inventory
   addProduct: (product: Omit<Product, 'id'>) => Product;
@@ -83,8 +106,6 @@ interface ShopContextType {
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  PRODUCTS: 'valent_products_v1',
-  ORDERS: 'valent_orders_v1',
   CART: 'valent_cart_v1',
   WISHLIST: 'valent_wishlist_v1',
 };
@@ -102,25 +123,13 @@ const DEFAULT_FILTERS: FilterState = {
 };
 
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Load products
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return INITIAL_PRODUCTS;
-  });
+  // Products & Orders now live in DynamoDB. We seed local state with the
+  // bundled demo data so the UI never shows a blank screen, then reconcile
+  // with AWS as soon as the initial load resolves.
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [orders, setOrders] = useState<Order[]>([]);
 
-  // Load orders
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ORDERS);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return INITIAL_ORDERS;
-  });
-
-  // Load cart
+  // Cart / wishlist stay in the browser — per-visitor, ephemeral.
   const [cart, setCart] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.CART);
     if (saved) {
@@ -129,7 +138,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return [];
   });
 
-  // Load wishlist
   const [wishlist, setWishlist] = useState<string[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.WISHLIST);
     if (saved) {
@@ -137,6 +145,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     return [];
   });
+
+  // Admin session (Cognito)
+  const [adminSession, setAdminSession] = useState<AdminSession | null>(() => loadAdminSession());
 
   // App UI State
   const [activeView, setActiveView] = useState<AppView>('home');
@@ -149,20 +160,20 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isFragranceQuizOpen, setIsFragranceQuizOpen] = useState<boolean>(false);
-  
+
   // Coupon
   const [couponCode, setCouponCode] = useState<string>('');
   const [couponDiscount, setCouponDiscount] = useState<number>(0);
 
-  // Sync to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
-  }, [products]);
+  // DynamoDB clients: guest (read products, create/look up own orders) and
+  // admin (full read/write, only present once signed in via Cognito).
+  const guestClient = useMemo(() => (awsIsConfigured ? createDocClient() : null), []);
+  const adminClient = useMemo(
+    () => (awsIsConfigured && adminSession ? createDocClient(adminSession.idToken) : null),
+    [adminSession]
+  );
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
-  }, [orders]);
-
+  // Sync cart/wishlist to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
   }, [cart]);
@@ -170,6 +181,39 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.WISHLIST, JSON.stringify(wishlist));
   }, [wishlist]);
+
+  // Load products from DynamoDB on mount (falls back to bundled demo data
+  // if AWS isn't configured for this build, e.g. local dev without env vars).
+  useEffect(() => {
+    if (!guestClient) return;
+    (async () => {
+      try {
+        const res = await guestClient.send(new ScanCommand({ TableName: PRODUCTS_TABLE }));
+        if (res.Items && res.Items.length > 0) {
+          setProducts(res.Items as Product[]);
+        }
+      } catch (err) {
+        console.error('Failed to load products from DynamoDB, using bundled demo data.', err);
+      }
+    })();
+  }, [guestClient]);
+
+  // Load the full order list once an admin is signed in (guests can't Scan
+  // — they can only create an order or look up their own via findOrder).
+  useEffect(() => {
+    if (!adminClient) {
+      setOrders([]);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await adminClient.send(new ScanCommand({ TableName: ORDERS_TABLE }));
+        setOrders((res.Items as Order[]) || []);
+      } catch (err) {
+        console.error('Failed to load orders from DynamoDB.', err);
+      }
+    })();
+  }, [adminClient]);
 
   // Currency helper
   const formatBDT = (amount: number): string => {
@@ -198,7 +242,20 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsMobileMenuOpen(false);
   };
 
-  // Add to cart
+  // --- Admin auth -----------------------------------------------------
+
+  const adminSignInAction = useCallback(async (email: string, password: string) => {
+    const session = await adminSignIn(email, password);
+    setAdminSession(session);
+  }, []);
+
+  const adminSignOutAction = useCallback(() => {
+    adminSignOut();
+    setAdminSession(null);
+  }, []);
+
+  // --- Cart -------------------------------------------------------------
+
   const addToCart = (product: Product, variant?: ProductVariant, quantity: number = 1) => {
     const selectedVar = variant || product.variants[0] || {
       id: `def-${product.id}`,
@@ -214,8 +271,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCart(prev => {
       const existing = prev.find(item => item.id === cartItemId);
       if (existing) {
-        return prev.map(item => 
-          item.id === cartItemId 
+        return prev.map(item =>
+          item.id === cartItemId
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
@@ -282,8 +339,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Wishlist
   const toggleWishlist = (productId: string) => {
-    setWishlist(prev => 
-      prev.includes(productId) 
+    setWishlist(prev =>
+      prev.includes(productId)
         ? prev.filter(id => id !== productId)
         : [...prev, productId]
     );
@@ -291,7 +348,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isInWishlist = (productId: string) => wishlist.includes(productId);
 
-  // Orders
+  // --- Orders -------------------------------------------------------------
+
   const createOrder = (customerInfo: CustomerInfo, deliveryFee: number): Order => {
     const randomSuffix = Math.floor(10000 + Math.random() * 90000);
     const orderNumber = `VAL-${randomSuffix}`;
@@ -326,8 +384,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       adminNotes: 'Order placed via online storefront. Cash on delivery verification pending.'
     };
 
-    // Deduct stock
-    setProducts(prevProducts => 
+    // Deduct stock locally (optimistic UI)
+    setProducts(prevProducts =>
       prevProducts.map(p => {
         const matchingCartItems = cart.filter(ci => ci.productId === p.id);
         if (matchingCartItems.length > 0) {
@@ -345,6 +403,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveView('order-success');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
+    // Persist to DynamoDB (guest role: PutItem on Orders only).
+    if (guestClient) {
+      const item = { ...newOrder, customerMobile: customerInfo.mobile };
+      guestClient
+        .send(new PutCommand({ TableName: ORDERS_TABLE, Item: item }))
+        .catch(err => console.error('Failed to save order to DynamoDB.', err));
+    }
+
     return newOrder;
   };
 
@@ -359,31 +425,110 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return ord;
     }));
+
+    if (adminClient) {
+      const values: Record<string, unknown> = adminNotes !== undefined
+        ? { ':status': status, ':notes': adminNotes }
+        : { ':status': status };
+      const expr = adminNotes !== undefined
+        ? 'SET #status = :status, adminNotes = :notes'
+        : 'SET #status = :status';
+      adminClient
+        .send(new UpdateCommand({
+          TableName: ORDERS_TABLE,
+          Key: { id: orderId },
+          UpdateExpression: expr,
+          ExpressionAttributeNames: { '#status': 'status' },
+          ExpressionAttributeValues: values,
+        }))
+        .catch(err => console.error('Failed to update order status in DynamoDB.', err));
+    }
   };
 
-  const findOrder = (query: string): Order | undefined => {
-    const clean = query.trim().toLowerCase();
+  // Looks up an order by exact order number (e.g. "VAL-84920") or exact
+  // mobile number, via the DynamoDB GSIs — works for guests, no sign-in
+  // required. Falls back to the locally-known orders if AWS isn't configured.
+  const findOrder = async (query: string): Promise<Order | undefined> => {
+    const clean = query.trim();
     if (!clean) return undefined;
-    return orders.find(ord => 
-      ord.orderNumber.toLowerCase() === clean ||
-      ord.customer.mobile.replace(/\D/g, '').includes(clean.replace(/\D/g, ''))
-    );
+
+    if (!guestClient) {
+      const cleanLower = clean.toLowerCase();
+      return orders.find(ord =>
+        ord.orderNumber.toLowerCase() === cleanLower ||
+        ord.customer.mobile.replace(/\D/g, '').includes(cleanLower.replace(/\D/g, ''))
+      );
+    }
+
+    try {
+      // Try as an order number first (case-insensitive exact match).
+      const byNumber = await guestClient.send(new QueryCommand({
+        TableName: ORDERS_TABLE,
+        IndexName: 'orderNumber-index',
+        KeyConditionExpression: 'orderNumber = :n',
+        ExpressionAttributeValues: { ':n': clean.toUpperCase() },
+      }));
+      if (byNumber.Items && byNumber.Items.length > 0) {
+        return byNumber.Items[0] as Order;
+      }
+
+      // Fall back to an exact mobile number match.
+      const digits = clean.replace(/\D/g, '');
+      if (digits.length >= 6) {
+        const byMobile = await guestClient.send(new QueryCommand({
+          TableName: ORDERS_TABLE,
+          IndexName: 'customerMobile-index',
+          KeyConditionExpression: 'customerMobile = :m',
+          ExpressionAttributeValues: { ':m': digits },
+        }));
+        if (byMobile.Items && byMobile.Items.length > 0) {
+          // Most recent first
+          const items = byMobile.Items as Order[];
+          items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+          return items[0];
+        }
+      }
+      return undefined;
+    } catch (err) {
+      console.error('Order lookup failed.', err);
+      return undefined;
+    }
   };
 
-  // Admin Product Actions
+  // --- Admin Product Actions --------------------------------------------
+
   const addProduct = (productData: Omit<Product, 'id'>): Product => {
     const newProduct: Product = {
       ...productData,
       id: `prod-${Date.now()}`
     };
     setProducts(prev => [newProduct, ...prev]);
+
+    if (adminClient) {
+      adminClient
+        .send(new PutCommand({ TableName: PRODUCTS_TABLE, Item: newProduct }))
+        .catch(err => console.error('Failed to save product to DynamoDB.', err));
+    }
     return newProduct;
   };
 
   const updateProduct = (id: string, updatedFields: Partial<Product>) => {
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updatedFields } : p));
+    let merged: Product | undefined;
+    setProducts(prev => prev.map(p => {
+      if (p.id === id) {
+        merged = { ...p, ...updatedFields };
+        return merged;
+      }
+      return p;
+    }));
     if (selectedProduct && selectedProduct.id === id) {
       setSelectedProduct(prev => prev ? { ...prev, ...updatedFields } : null);
+    }
+
+    if (adminClient && merged) {
+      adminClient
+        .send(new PutCommand({ TableName: PRODUCTS_TABLE, Item: merged }))
+        .catch(err => console.error('Failed to update product in DynamoDB.', err));
     }
   };
 
@@ -393,17 +538,41 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSelectedProduct(null);
       setActiveView('shop');
     }
+
+    if (adminClient) {
+      adminClient
+        .send(new DeleteCommand({ TableName: PRODUCTS_TABLE, Key: { id } }))
+        .catch(err => console.error('Failed to delete product in DynamoDB.', err));
+    }
   };
 
   const updateStock = (id: string, stock: number) => {
     setProducts(prev => prev.map(p => p.id === id ? { ...p, stock } : p));
+
+    if (adminClient) {
+      adminClient
+        .send(new UpdateCommand({
+          TableName: PRODUCTS_TABLE,
+          Key: { id },
+          UpdateExpression: 'SET stock = :stock',
+          ExpressionAttributeValues: { ':stock': stock },
+        }))
+        .catch(err => console.error('Failed to update stock in DynamoDB.', err));
+    }
   };
 
+  // Re-seeds the Products table from the bundled demo catalogue. Does NOT
+  // touch the Orders table — real customer orders are never wiped by this.
   const resetToDemoData = () => {
     setProducts(INITIAL_PRODUCTS);
-    setOrders(INITIAL_ORDERS);
-    localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
-    localStorage.removeItem(STORAGE_KEYS.ORDERS);
+
+    if (adminClient) {
+      Promise.all(
+        INITIAL_PRODUCTS.map(p =>
+          adminClient!.send(new PutCommand({ TableName: PRODUCTS_TABLE, Item: p }))
+        )
+      ).catch(err => console.error('Failed to reset demo products in DynamoDB.', err));
+    }
   };
 
   return (
@@ -425,6 +594,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isFragranceQuizOpen,
         couponCode,
         couponDiscount,
+        awsConfigured: awsIsConfigured,
+        adminEmail: adminSession?.email ?? null,
+        adminSignInAction,
+        adminSignOutAction,
         navigateTo,
         setSelectedCategory,
         setSearchQuery,

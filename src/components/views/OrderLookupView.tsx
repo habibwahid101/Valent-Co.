@@ -20,12 +20,19 @@ export const OrderLookupView: React.FC = () => {
   const [searched, setSearched] = useState(false);
   const [foundOrder, setFoundOrder] = useState<Order | undefined>(undefined);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const [isSearching, setIsSearching] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    const res = findOrder(query.trim());
-    setFoundOrder(res);
-    setSearched(true);
+    setIsSearching(true);
+    try {
+      const res = await findOrder(query.trim());
+      setFoundOrder(res);
+      setSearched(true);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const getStatusStep = (status: OrderStatus): number => {
@@ -71,10 +78,11 @@ export const OrderLookupView: React.FC = () => {
         />
         <button
           type="submit"
-          className="px-6 py-3.5 bg-[#1C1B19] hover:bg-[#2A2927] text-white text-xs font-bold uppercase tracking-wider rounded-lg transition cursor-pointer flex items-center gap-2 shrink-0"
+          disabled={isSearching}
+          className="px-6 py-3.5 bg-[#1C1B19] hover:bg-[#2A2927] disabled:opacity-60 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition cursor-pointer flex items-center gap-2 shrink-0"
         >
           <Search className="w-4 h-4" />
-          <span>Track</span>
+          <span>{isSearching ? 'Searching…' : 'Track'}</span>
         </button>
       </form>
 
