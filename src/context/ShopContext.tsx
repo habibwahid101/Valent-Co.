@@ -404,10 +404,18 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Persist to DynamoDB (guest role: PutItem on Orders only).
+    // ConditionExpression guards against overwriting an existing order: the
+    // guest IAM role can PutItem but has no Update/Delete, so without this
+    // condition a client with valid guest credentials could overwrite another
+    // shopper's order by resubmitting the same id.
     if (guestClient) {
       const item = { ...newOrder, customerMobile: customerInfo.mobile };
       guestClient
-        .send(new PutCommand({ TableName: ORDERS_TABLE, Item: item }))
+        .send(new PutCommand({
+          TableName: ORDERS_TABLE,
+          Item: item,
+          ConditionExpression: 'attribute_not_exists(id)',
+        }))
         .catch(err => console.error('Failed to save order to DynamoDB.', err));
     }
 
