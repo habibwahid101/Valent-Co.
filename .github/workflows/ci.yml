@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Typecheck & Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run lint
+
+      - name: Production build
+        run: npm run build
+        env:
+          # Dummy values so the build succeeds without real AWS resources.
+          # The deployed build on Amplify Hosting uses the real values set
+          # in the Amplify console's environment variables.
+          VITE_AWS_REGION: us-east-1
+          VITE_IDENTITY_POOL_ID: us-east-1:00000000-0000-0000-0000-000000000000
+          VITE_COGNITO_USER_POOL_ID: us-east-1_CIPLACEHOLDER
+          VITE_COGNITO_CLIENT_ID: ciplaceholderclientid00000000000
+          VITE_DDB_PRODUCTS_TABLE: ValentCo-Products
+          VITE_DDB_ORDERS_TABLE: ValentCo-Orders
