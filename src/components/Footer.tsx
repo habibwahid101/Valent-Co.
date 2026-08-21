@@ -1,14 +1,13 @@
 import React from 'react';
-import { 
-  ShieldCheck, 
-  Truck, 
-  RefreshCw, 
-  Phone, 
-  MessageCircle, 
-  Clock, 
-  MapPin, 
-  Mail,
-  Lock
+import {
+  ShieldCheck,
+  Truck,
+  RefreshCw,
+  Phone,
+  MessageCircle,
+  Clock,
+  MapPin,
+  Mail
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
 
@@ -213,16 +212,6 @@ export const Footer: React.FC = () => {
               <MessageCircle className="w-4 h-4" />
               <span>WhatsApp Concierge</span>
             </a>
-
-            <div className="mt-6 pt-4 border-t border-[#2D2B28]">
-              <button
-                onClick={() => navigateTo('admin')}
-                className="text-[11px] text-[#9A6A3A] hover:text-white transition flex items-center gap-1 cursor-pointer font-medium"
-              >
-                <Lock className="w-3 h-3" />
-                <span>Store Management Portal</span>
-              </button>
-            </div>
           </div>
 
         </div>

@@ -5,12 +5,11 @@ import {
   Search, 
   Menu, 
   X, 
-  SlidersHorizontal, 
-  Sparkles, 
-  ShieldCheck, 
-  Truck, 
+  SlidersHorizontal,
+  Sparkles,
+  ShieldCheck,
+  Truck,
   Phone,
-  LayoutDashboard,
   ArrowRight,
   Clock
 } from 'lucide-react';
@@ -84,19 +83,12 @@ export const Header: React.FC = () => {
           </div>
 
           <div className="hidden md:flex items-center gap-6 text-[#A8A49C] text-[11px]">
-            <button 
+            <button
               onClick={() => navigateTo('order-lookup')}
               className="hover:text-white transition flex items-center gap-1 cursor-pointer"
             >
               <Clock className="w-3 h-3" />
               Track Order
-            </button>
-            <button 
-              onClick={() => navigateTo('admin')} 
-              className="hover:text-white transition flex items-center gap-1 font-semibold text-[#9A6A3A] cursor-pointer"
-            >
-              <LayoutDashboard className="w-3 h-3" />
-              Admin Portal
             </button>
           </div>
         </div>
@@ -355,18 +347,11 @@ export const Header: React.FC = () => {
                 >
                   📦 Track Order Status
                 </button>
-                <button 
+                <button
                   onClick={() => navigateTo('wishlist')}
-                  className="p-3 bg-white border border-[#E8E5DE] rounded-lg text-left font-medium text-[#1C1B19] cursor-pointer"
+                  className="col-span-2 p-3 bg-white border border-[#E8E5DE] rounded-lg text-left font-medium text-[#1C1B19] cursor-pointer"
                 >
                   ❤️ Saved Wishlist ({wishlist.length})
-                </button>
-                <button 
-                  onClick={() => navigateTo('admin')}
-                  className="col-span-2 p-3 bg-[#F4F2EB] border border-[#9A6A3A]/30 rounded-lg text-left font-semibold text-[#1C1B19] flex items-center justify-between cursor-pointer"
-                >
-                  <span>⚙️ Store Management Admin</span>
-                  <span className="text-[10px] bg-[#9A6A3A] text-white px-2 py-0.5 rounded">Access</span>
                 </button>
               </div>
             </div>

@@ -150,7 +150,20 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [adminSession, setAdminSession] = useState<AdminSession | null>(() => loadAdminSession());
 
   // App UI State
-  const [activeView, setActiveView] = useState<AppView>('home');
+  // The admin area is intentionally not linked from anywhere on the public
+  // storefront (top bar, footer, mobile menu) — a luxury storefront
+  // shouldn't advertise a back-office to shoppers. It's still reachable by
+  // whoever needs it: opening /admin directly (or bookmarking it) lands
+  // here on load. Cognito sign-in (AdminGate) is the actual access control
+  // either way; this is purely about not putting "Admin Portal" in front
+  // of customers.
+  const [activeView, setActiveView] = useState<AppView>(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname.replace(/\/+$/, '').toLowerCase();
+      if (path === '/admin') return 'admin';
+    }
+    return 'home';
+  });
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -238,6 +251,18 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFilters(prev => ({ ...prev, searchQuery: payload.search || '' }));
     }
     setActiveView(view);
+    // Keep the URL in sync with the admin view specifically (replaceState,
+    // not pushState — this app doesn't listen for popstate/back-button
+    // navigation between views, so adding history entries here would just
+    // produce a broken back button). Every other view shares "/", matching
+    // existing behavior; only /admin needs its own reachable URL now that
+    // it's not linked anywhere in the UI.
+    if (typeof window !== 'undefined') {
+      const targetPath = view === 'admin' ? '/admin' : '/';
+      if (window.location.pathname !== targetPath) {
+        window.history.replaceState(null, '', targetPath);
+      }
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setIsMobileMenuOpen(false);
   };
