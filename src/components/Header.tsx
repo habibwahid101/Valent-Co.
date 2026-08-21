@@ -107,7 +107,7 @@ export const Header: React.FC = () => {
         <div className="flex items-center justify-between h-18 sm:h-20">
           
           {/* Left: Mobile Menu Trigger & Fragrance Quiz CTA */}
-          <div className="flex items-center gap-3 lg:w-1/4">
+          <div className="flex items-center gap-3 shrink-0 lg:w-1/4">
             <button 
               id="mobile-menu-btn"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -127,22 +127,22 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Center: Brand Logo */}
-          <div className="text-center lg:w-2/4">
-            <button 
+          <div className="flex-1 min-w-0 text-center lg:flex-none lg:w-2/4">
+            <button
               onClick={() => navigateTo('home')}
-              className="inline-block text-left cursor-pointer group text-center"
+              className="inline-block max-w-full text-left cursor-pointer group text-center"
             >
-              <span className="block font-serif text-2xl sm:text-3xl tracking-[0.2em] font-semibold uppercase text-[#1C1B19] group-hover:text-[#9A6A3A] transition duration-300">
+              <span className="block font-serif text-lg sm:text-2xl lg:text-3xl tracking-[0.1em] sm:tracking-[0.15em] lg:tracking-[0.2em] font-semibold uppercase text-[#1C1B19] group-hover:text-[#9A6A3A] transition duration-300 whitespace-nowrap truncate">
                 VALENT & CO.
               </span>
-              <span className="block text-[9px] tracking-[0.35em] text-[#6B6864] uppercase -mt-0.5">
+              <span className="block text-[9px] tracking-[0.2em] sm:tracking-[0.35em] text-[#6B6864] uppercase -mt-0.5 whitespace-nowrap truncate">
                 Boutique & Horology
               </span>
             </button>
           </div>
 
           {/* Right: Actions (Search, Wishlist, Cart) */}
-          <div className="flex items-center justify-end gap-2 sm:gap-4 lg:w-1/4">
+          <div className="flex items-center justify-end gap-2 sm:gap-4 shrink-0 lg:w-1/4">
             {/* Search Trigger */}
             <button
               id="search-open-btn"
