@@ -293,7 +293,7 @@ export const Header: React.FC = () => {
 
       {/* Mobile Drawer Navigation */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 top-18 bg-[#FAF9F6] z-30 overflow-y-auto px-6 py-6 border-t border-[#E8E5DE] shadow-2xl flex flex-col justify-between">
+        <div className="lg:hidden fixed left-0 right-0 bottom-0 top-18 bg-[#FAF9F6] z-30 overflow-y-auto px-6 py-6 border-t border-[#E8E5DE] shadow-2xl flex flex-col justify-between">
           <div className="space-y-6">
             {/* Quick Scent Finder banner */}
             <div 
