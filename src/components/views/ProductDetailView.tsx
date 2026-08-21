@@ -183,7 +183,7 @@ export const ProductDetailView: React.FC = () => {
                 </div>
               </div>
               <a
-                href={`https://wa.me/8801711293847?text=Hello%20Valent%20%26%20Co.%2C%20I%20am%20inquiring%20about%20${encodeURIComponent(product.name)}`}
+                href={`https://wa.me/8801648339833?text=Hello%20Valent%20%26%20Co.%2C%20I%20am%20inquiring%20about%20${encodeURIComponent(product.name)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-3.5 py-2 rounded-lg bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#1b8a43] text-xs font-semibold transition"

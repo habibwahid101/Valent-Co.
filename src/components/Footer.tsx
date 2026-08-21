@@ -99,7 +99,7 @@ export const Footer: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-[#9A6A3A]" />
-                <span>+880 1711-293847 (WhatsApp & Phone)</span>
+                <span>+880 1648-339833 (WhatsApp & Phone)</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-[#9A6A3A]" />
@@ -204,7 +204,7 @@ export const Footer: React.FC = () => {
               Need assistance placing an order or selecting a fragrance? Chat with our specialist on WhatsApp.
             </p>
             <a
-              href="https://wa.me/8801711293847?text=Hello%20Valent%20%26%20Co.%2C%20I%20would%20like%20to%20inquire%20about%20a%20product."
+              href="https://wa.me/8801648339833?text=Hello%20Valent%20%26%20Co.%2C%20I%20would%20like%20to%20inquire%20about%20a%20product."
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-[#25D366]/20 border border-[#25D366]/40 text-[#25D366] px-3.5 py-2 rounded-lg text-xs font-medium hover:bg-[#25D366]/30 transition"

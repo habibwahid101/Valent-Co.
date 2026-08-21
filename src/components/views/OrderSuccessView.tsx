@@ -137,7 +137,7 @@ export const OrderSuccessView: React.FC = () => {
             </div>
           </div>
           <a
-            href={`https://wa.me/8801711293847?text=${whatsappMessage}`}
+            href={`https://wa.me/8801648339833?text=${whatsappMessage}`}
             target="_blank"
             rel="noopener noreferrer"
             className="px-4 py-2 bg-[#25D366] hover:bg-[#1fb857] text-white text-xs font-bold rounded-lg shadow-xs transition flex items-center gap-1.5 shrink-0"

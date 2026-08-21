@@ -109,7 +109,7 @@ export const MobileMenuDrawer: React.FC = () => {
       {/* Mobile Footer info */}
       <div className="pt-8 border-t border-[#E8E5DE] mt-6 text-xs text-[#6B6864]">
         <p className="font-serif text-sm font-semibold text-[#1C1B19] mb-1">VALENT & CO. BANGLADESH</p>
-        <p>Direct Concierge: +880 1711-293847 (WhatsApp)</p>
+        <p>Direct Concierge: +880 1648-339833 (WhatsApp)</p>
         <p className="text-[11px] text-[#A8A49C] mt-2">Gulshan-2, Dhaka · Cash on Delivery Nationwide</p>
       </div>
     </div>

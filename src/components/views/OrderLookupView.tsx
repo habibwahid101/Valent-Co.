@@ -227,7 +227,7 @@ export const OrderLookupView: React.FC = () => {
             <div className="p-4 bg-white border-t border-[#E8E5DE] flex justify-between items-center text-xs">
               <span className="text-[#6B6864]">Need adjustments or delivery rescheduling?</span>
               <a
-                href={`https://wa.me/8801711293847?text=Inquiry%20regarding%20order%20${foundOrder.orderNumber}`}
+                href={`https://wa.me/8801648339833?text=Inquiry%20regarding%20order%20${foundOrder.orderNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[#1b8a43] font-semibold hover:underline flex items-center gap-1"

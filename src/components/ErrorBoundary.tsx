@@ -67,7 +67,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 <span>Reload Page</span>
               </button>
               <a
-                href="https://wa.me/8801711293847?text=Hello%2C%20I%20ran%20into%20an%20error%20on%20the%20Valent%20%26%20Co.%20website."
+                href="https://wa.me/8801648339833?text=Hello%2C%20I%20ran%20into%20an%20error%20on%20the%20Valent%20%26%20Co.%20website."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-6 py-3 border border-[#D9D5CC] hover:bg-[#F4F2EB] text-[#1C1B19] text-xs font-bold uppercase tracking-[0.2em] rounded-lg flex items-center justify-center gap-2 cursor-pointer transition"
